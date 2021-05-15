@@ -1,3 +1,10 @@
+#---------------------------------------------------------------------
+# Downloads daily stock prices for permcos
+# listed in the NY Fed's PERMCO-RSSD link
+# Available at: 
+# https://www.newyorkfed.org/research/banking_research/datasets.html
+#---------------------------------------------------------------------
+
 rm(list=ls())
 
 library(data.table)
@@ -29,13 +36,19 @@ print("Duplicate permcos?:", any(duplicated(nyfed[,list(permco)])))
 #----------------------------------------
 
 ## daily stock prices
-q = paste("SELECT a.*, b.htick, b.hcomnam 
+q = paste("SELECT a.*, b.htick, b.hcomnam, c.gvkey
            FROM crspq.dsf62 as a
             LEFT JOIN crspq.dsfhdr62 as b
                    ON  a.permco = b.permco
                    AND a.permno = b.permno
                    AND a.date between b.begdat and b.enddat
-           WHERE a.date >= CAST('2018-01-01' AS DATE) 
+            LEFT JOIN (SELECT gvkey, lpermno, linkdt, linkenddt
+                       FROM crspq.ccmxpf_linktable
+                       WHERE linktype IN ('LU', 'LC')
+                         AND linkprim in ('P', 'C')) as c
+                   ON a.permno = c.lpermno
+                  AND a.date between c.linkdt AND coalesce(c.linkenddt, CAST('9999-12-31' AS DATE))
+           WHERE a.date >= CAST('1960-01-01' AS DATE) 
              AND a.permco IN (",  paste(nyfed$permco, sep=' ', collapse=','), ")", sep="")
 
 q = dbSendQuery(wrds, q)
