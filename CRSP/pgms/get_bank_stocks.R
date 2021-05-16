@@ -10,6 +10,7 @@ rm(list=ls())
 library(data.table)
 library(sqldf)
 library(RPostgres)
+library(zoo)
 library(feather)
 
 wrds <- dbConnect(Postgres(),
@@ -24,12 +25,17 @@ setwd("~/CRSP/")
 #-------------------------------
 # Read NY Fed listed stock file
 #-------------------------------
-nyfed = fread("./data/nyfed_listed_banks_20200930.csv", sep=",", stringsAsFactors=F)
+
+## read and cleanup file
+nyfed = fread("./data/crsp_20200930.csv", sep=",", stringsAsFactors=F)
+nyfed[,notice := NULL]
+nyfed = nyfed[!is.na(permco),]
+
+## convert dates
 nyfed[,dt_start := as.Date(as.character(dt_start), "%Y%m%d")]
 nyfed[,dt_end := as.Date(as.character(dt_end), "%Y%m%d")]
 
-nyfed = nyfed[!is.na(permco),]
-print("Duplicate permcos?:", any(duplicated(nyfed[,list(permco)])))
+print(paste("Duplicate permcos?:", any(duplicated(nyfed[,list(permco, dt_start)]))))
 
 #----------------------------------------
 # Get all stock prices for NYFED permcos
@@ -48,7 +54,7 @@ q = paste("SELECT a.*, b.htick, b.hcomnam, c.gvkey
                          AND linkprim in ('P', 'C')) as c
                    ON a.permno = c.lpermno
                   AND a.date between c.linkdt AND coalesce(c.linkenddt, CAST('9999-12-31' AS DATE))
-           WHERE a.date >= CAST('1960-01-01' AS DATE) 
+           WHERE a.date >= CAST('1986-06-30' AS DATE) 
              AND a.permco IN (",  paste(nyfed$permco, sep=' ', collapse=','), ")", sep="")
 
 q = dbSendQuery(wrds, q)
@@ -66,7 +72,7 @@ any(duplicated(bank_stocks[,list(date, permco, permno)]))
 # limit to NYFED active dates
 #-----------------------------
 
-bank_stocks = sqldf("SELECT a.*, b.entity as ID_RSSD, b.name as bank_name
+bank_stocks = sqldf("SELECT a.*, b.entity as ID_RSSD, b.name as bank_name, b.inst_type
                      FROM bank_stocks as a,
                           nyfed as b
                      WHERE a.permco = b.permco 
@@ -86,11 +92,21 @@ CCAR_permcos = c(53687, 90, 3151, 20265, 30513,
 
 bank_stocks[,CCAR := ifelse(permco %in% CCAR_permcos, 1, 0)]
 
+#------------------
+# Check duplicates
+#------------------
+print(paste("Duplicates by permnos, date, inst_type, id_rssd:", any(duplicated(bank_stocks[,list(permno, date, inst_type, ID_RSSD)]))))
+
 #-----------------------
 # count unique permcos
 #-----------------------
 print(paste("Number of unique permcos in NYFED data:", length(unique(nyfed$permco))))
 print(paste("Number of unique permcos from CRSP data:", length(unique(bank_stocks$permco))))
+
+#---------------------
+# Set quarterly date
+#--------------------
+bank_stocks[,dt_qtr := fifelse(as.Date(as.yearqtr(date)+0.25)-1 == date, as.Date(as.yearqtr(date)+0.25)-1, as.Date(as.yearqtr(date))-1)]
 
 #-------------
 # Export data
