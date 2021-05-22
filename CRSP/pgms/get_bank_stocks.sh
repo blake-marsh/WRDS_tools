@@ -1,8 +1,11 @@
 #!/bin/bash
+
+
 #$ -cwd
 
-$ -N CRSP_bank_stocks
-$ -o ~/CRSP/logfiles/get_bank_stocks.log
+#$ -N CRSP_bank_stocks
+#$ -o ~/CRSP/logfiles/get_bank_stocks.o.log
+#$ -e ~/CRSP/logfiles/get_bank_stocks.e.log
 
 
 cd ~/CRSP/
