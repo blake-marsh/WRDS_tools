@@ -108,6 +108,11 @@ print(paste("Number of unique permcos from CRSP data:", length(unique(bank_stock
 #--------------------
 bank_stocks[,dt_qtr := fifelse(as.Date(as.yearqtr(date)+0.25)-1 == date, as.Date(as.yearqtr(date)+0.25)-1, as.Date(as.yearqtr(date))-1)]
 
+#------------------
+# Set monthly date
+#------------------
+bank_stocks[,dt_mnth := as.Date(as.yearmon(date))]
+
 #-------------
 # Export data
 #-------------
