@@ -36,6 +36,8 @@ nyfed[,dt_start := as.Date(as.character(dt_start), "%Y%m%d")]
 nyfed[,dt_end := as.Date(as.character(dt_end), "%Y%m%d")]
 
 print(paste("Duplicate permcos?:", any(duplicated(nyfed[,list(permco, dt_start)]))))
+saveRDS(nyfed, "./data/nyfed_crsp_20200930.rds")
+write_feather(nyfed, "./data/nyfed_crsp_20200930.feather")
 
 #----------------------------------------
 # Get all stock prices for NYFED permcos
@@ -111,7 +113,7 @@ bank_stocks[,dt_qtr := fifelse(as.Date(as.yearqtr(date)+0.25)-1 == date, as.Date
 #------------------
 # Set monthly date
 #------------------
-bank_stocks[,dt_mnth := as.Date(as.yearmon(date))]
+bank_stocks[,dt_mnth := as.Date(as.yearmon(date)+(1/12))-1]
 
 #-------------
 # Export data
